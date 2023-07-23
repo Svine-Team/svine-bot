@@ -60,6 +60,7 @@ func main() {
     signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
     <-sc
 
+    fmt.Println("Gracefully shutting down.")
     // Cleanly close down the Discord session.
     dg.Close()
 }
