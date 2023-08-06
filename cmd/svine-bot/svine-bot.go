@@ -30,29 +30,96 @@ func getEnvVariable(key string) string {
     return os.Getenv(key)
 }
 
-func main() {
+var (
+	commands = []*discordgo.ApplicationCommand{
+		// {
+		// 	Name: "basic-command",
+		// 	// All commands and options must have a description
+		// 	// Commands/options without description will fail the registration
+		// 	// of the command.
+		// 	Description: "Basic command",
+		// },
+		{
+			Name: "cool-basic-command",
+			// All commands and options must have a description
+			// Commands/options without description will fail the registration
+			// of the command.
+			Description: "Basic command",
+		},
+    }
 
+    commandHandlers = map[string]func(s *discordgo.Session, i *discordgo.InteractionCreate){
+        "basic-command": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
+            s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+                Type: discordgo.InteractionResponseChannelMessageWithSource,
+                Data: &discordgo.InteractionResponseData{
+                    Content: "Response!",
+                },
+            })
+        },
+
+        "cool-basic-command": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
+            s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+                Type: discordgo.InteractionResponseChannelMessageWithSource,
+                Data: &discordgo.InteractionResponseData{
+                    Content: "COOL Response!",
+                },
+            })
+        },
+    }
+)
+
+var session *discordgo.Session
+
+// Create a new Discord session using the provided bot token.
+func init() {
     Token := getEnvVariable("BOT_TOKEN")
 
-    // Create a new Discord session using the provided bot token.
-    dg, err := discordgo.New("Bot " + Token)
+    var err error
+
+    session, err = discordgo.New("Bot " + Token)
     if err != nil {
-        fmt.Println("error creating Discord session,", err)
+        log.Fatalf("Cannot create the session: %v", err)
+    }
+}
+
+func init() {
+    session.AddHandler(func(s *discordgo.Session, i *discordgo.InteractionCreate) {
+        if commandHandler, ok := commandHandlers[i.ApplicationCommandData().Name]; ok {
+            commandHandler(s, i)
+        }
+    })
+}
+
+func main() {
+    session.AddHandler(func(s *discordgo.Session, ready *discordgo.Ready) {
+        user := s.State.User
+        log.Printf("Logged in as %v#%v", user.Username, user.Discriminator)
+    })
+
+    // Open a websocket connection to Discord and begin listening.
+    err := session.Open()
+    if err != nil {
+        log.Fatalf("Cannot open the session: %v", err)
         return
     }
 
     // Register the messageCreate func as a callback for MessageCreate events.
-    dg.AddHandler(messageCreate)
+    // session.AddHandler(messageCreate)
 
     // In this example, we only care about receiving message events.
-    dg.Identify.Intents = discordgo.IntentsGuildMessages
+    // dg.Identify.Intents = discordgo.IntentsGuildMessages
 
-    // Open a websocket connection to Discord and begin listening.
-    err = dg.Open()
-    if err != nil {
-        fmt.Println("error opening connection,", err)
-        return
+    log.Println("Adding commands...")
+    registeredCommands := make([]*discordgo.ApplicationCommand, len(commands))
+    for i, command := range commands {
+        cmd, err := session.ApplicationCommandCreate(session.State.User.ID, "", command)
+        if err != nil {
+            log.Panicf("Cannot create '%v' command: %v", command.Name, err)
+        }
+        registeredCommands[i] = cmd
     }
+
 
     // Wait here until CTRL-C or other term signal is received.
     fmt.Println("Bot is now running.  Press CTRL-C to exit.")
@@ -60,9 +127,18 @@ func main() {
     signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
     <-sc
 
-    fmt.Println("Gracefully shutting down.")
+    fmt.Println("Closing session...")
     // Cleanly close down the Discord session.
-    dg.Close()
+    session.Close()
+
+    log.Println("Removing commands...")
+    for _, command := range registeredCommands {
+        err := session.ApplicationCommandDelete(session.State.User.ID, "", command.ID)
+        if err != nil {
+            log.Panicf("Cannot delete '%v' command: %v", command.Name, err)
+        }
+    }
+    fmt.Println("Gracefully shutting down...")
 }
 
 // This function will be called (due to AddHandler above) every time a new
