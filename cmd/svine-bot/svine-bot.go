@@ -30,22 +30,37 @@ func getEnvVariable(key string) string {
     return os.Getenv(key)
 }
 
+// All commands and options must have a description
+// Commands/options without description will fail the registration
+// of the command.
 var (
 	commands = []*discordgo.ApplicationCommand{
 		{
 			Name: "basic-command",
-			// All commands and options must have a description
-			// Commands/options without description will fail the registration
-			// of the command.
 			Description: "Basic command",
 		},
 		{
 			Name: "cool-basic-command",
-			// All commands and options must have a description
-			// Commands/options without description will fail the registration
-			// of the command.
 			Description: "Basic command",
 		},
+        {
+            Name: "pivo",
+            Description: "Ranking by the times we met",
+            Options: []*discordgo.ApplicationCommandOption{
+                {
+                    Type:        discordgo.ApplicationCommandOptionUser,
+                    Name:        "user-option",
+                    Description: "User option",
+                    Required:    true,
+                },
+                {
+                    Type:        discordgo.ApplicationCommandOptionRole,
+                    Name:        "role-option",
+                    Description: "Role option",
+                    Required:    true,
+                },
+            },
+        },
     }
 
     commandHandlers = map[string]func(s *discordgo.Session, i *discordgo.InteractionCreate){
@@ -63,6 +78,50 @@ var (
                 Type: discordgo.InteractionResponseChannelMessageWithSource,
                 Data: &discordgo.InteractionResponseData{
                     Content: "COOL Response!",
+                },
+            })
+        },
+
+        "pivo": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
+            options := i.ApplicationCommandData().Options
+            optionMap := make(map[string]*discordgo.ApplicationCommandInteractionDataOption, len(options))
+            for _, opt := range options {
+                optionMap[opt.Name] = opt
+            }
+
+            msgArgs := make([]interface{}, 0, len(options))
+            msgFormat := "Successfully added role to user!\n"
+            var user *discordgo.User
+            var role *discordgo.Role
+
+            if opt, ok := optionMap["user-option"]; !ok {
+                log.Panicf("Couldn't get user from options")
+            } else {
+                user = opt.UserValue(nil)
+                msgArgs = append(msgArgs, user.ID)
+                msgFormat += "> user-option: <@%s>\n"
+            }
+
+            if opt, ok := optionMap["role-option"]; !ok {
+                log.Panicf("Couldn't get role from options")
+            } else {
+                role = opt.RoleValue(nil, "")
+                msgArgs = append(msgArgs, role.ID)
+                msgFormat += "> role-option: <@%s>\n"
+            }
+
+            err := session.GuildMemberRoleAdd(i.GuildID, user.ID, role.ID)
+            if err != nil {
+                log.Panicf("Couldn't add the role '%v' to user '%v'", role.ID, user.ID)
+            }
+
+            s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+                Type: discordgo.InteractionResponseChannelMessageWithSource,
+                Data: &discordgo.InteractionResponseData{
+                    Content: fmt.Sprintf(
+                        msgFormat,
+                        msgArgs...,
+                    ),
                 },
             })
         },
