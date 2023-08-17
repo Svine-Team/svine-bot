@@ -1,14 +1,15 @@
 package main
 
 import (
-    "fmt"
-    "os"
-    "log"
-    "os/signal"
-    "syscall"
+	"fmt"
+	"log"
+	"os"
+	"os/signal"
+	"syscall"
 
-    "github.com/joho/godotenv"
-    "github.com/bwmarrin/discordgo"
+	"github.com/Svine-Team/svine-bot/pkg/operations"
+	"github.com/bwmarrin/discordgo"
+	"github.com/joho/godotenv"
 )
 
 // Variables used for command line parameters
@@ -134,6 +135,15 @@ func initHandlers() {
     session.AddHandler(func(s *discordgo.Session, ready *discordgo.Ready) {
         user := s.State.User
         log.Printf("Logged in as %v#%v", user.Username, user.Discriminator)
+
+        for _, guild := range ready.Guilds {
+            log.Printf("Creating ranks (roles) for guild '%v'", guild.ID)
+            role, err := operations.CreateRole(s, guild, "created-test-role", 100)
+            
+            if err != nil {
+                log.Panicf("Couldn't create role '%v' on guild '%v'", role.ID, guild.ID)
+            }
+        }
     })
 
     session.AddHandler(func(s *discordgo.Session, i *discordgo.InteractionCreate) {
