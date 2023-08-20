@@ -131,20 +131,33 @@ var (
 
 var session *discordgo.Session
 
-func initHandlers() {
-    session.AddHandler(func(s *discordgo.Session, ready *discordgo.Ready) {
-        user := s.State.User
-        log.Printf("Logged in as %v#%v", user.Username, user.Discriminator)
+func createRoles(s *discordgo.Session, ready *discordgo.Ready) {
+    user := s.State.User
+    log.Printf("Logged in as %v#%v", user.Username, user.Discriminator)
 
-        for _, guild := range ready.Guilds {
-            log.Printf("Creating ranks (roles) for guild '%v'", guild.ID)
-            role, err := operations.CreateRole(s, guild, "created-test-role", 100)
-            
-            if err != nil {
-                log.Panicf("Couldn't create role '%v' on guild '%v'", role.ID, guild.ID)
-            }
+    // TODO: Make an adapter to fetch list from different sources (json,
+    //   server...)
+    roleNamesToCreate := []string{"created-test-role", "new-role"}
+
+    for _, guild := range ready.Guilds {
+        createdRoles, err := operations.CreateRolesForGuild(session, guild, roleNamesToCreate)
+
+        if err != nil {
+            log.Panicf("Couldn't create role: %v", err)
         }
-    })
+
+        if len(createdRoles) == 0 {
+            log.Printf("All roles already exist for guild '%v'", guild.ID)
+            continue
+        }
+
+        log.Printf("Created new roles for guild '%v': %v", guild.ID, createdRoles)
+    }
+
+}
+
+func initHandlers() {
+    session.AddHandler(createRoles)
 
     session.AddHandler(func(s *discordgo.Session, i *discordgo.InteractionCreate) {
         if commandHandler, ok := commandHandlers[i.ApplicationCommandData().Name]; ok {
@@ -162,6 +175,18 @@ func initHandlers() {
 
 // Create a new Discord session using the provided bot token.
 func init() {
+    // TODO:https://github.com/cosmtrek/air/issues?q=is%3Aissue+log+is%3Aopen
+    // Unfortunately, when launching app with `air`, everything that goes
+    //   into stderr is held back until terminate. So you don't see any `log`
+    //   messages in console and even redirecting them via `*>` or `2>` don't
+    //   help.
+    // Therefore, I set log to stdout: now it functions almost the same as
+    // `fmt` but it's still important to differentiate between there two
+    // packages. Use `log` when you want to log some messages for future
+    // debugging. It's especially important in production environment. Almost
+    // all analytic tools watch stderr so it has to be toggled to `os.Stderr`
+    // in production.
+    log.SetOutput(os.Stdout)
     Token := getEnvVariable("BOT_TOKEN")
 
     var err error
