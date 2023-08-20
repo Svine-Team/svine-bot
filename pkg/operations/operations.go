@@ -1,6 +1,6 @@
+package operations
 // Package operations provides a centralized gateway for processing requests
 // on Discord API operations. It is mostly some small CRUD wrappers.
-package operations
 
 import (
 	"fmt"
