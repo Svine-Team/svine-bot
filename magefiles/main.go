@@ -11,5 +11,5 @@ func Build() error {
 }
 
 func BuildLive() error {
-    return sh.RunV("air")
+    return sh.RunV("air", "*> ./tmp/run-verbose.log")
 }
