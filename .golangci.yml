@@ -11,3 +11,4 @@ linters:
     - golint
     - interfacer
     - depguard
+    - maligned
