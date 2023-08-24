@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	roleHoist             = true
-	roleMentionable           = true
+	roleHoist       = true
+	roleMentionable = true
 )
 
 // Couldn't pass simple constants as params.
@@ -48,32 +48,32 @@ func CreateRole(
 func CreateRolesForGuild(
 	session *discordgo.Session,
 	guild *discordgo.Guild,
-    roleNamesToCreate []string,
+	roleNamesToCreate []string,
 ) ([]*discordgo.Role, error) {
-    createdRoles := []*discordgo.Role{}
+	createdRoles := []*discordgo.Role{}
 
-    for _, roleNameToCreate := range roleNamesToCreate {
-        log.Printf("Creating ranks (roles) for guild '%v'", guild.ID)
-        existingRoles, err := session.GuildRoles(guild.ID)
-        if err != nil {
-            log.Panicf("Couldn't fetch guild roles for guild '%v'", guild.ID)
-        }
-        existingRoleNames := make(map[string]bool)
-        for _, role := range existingRoles {
-            existingRoleNames[role.Name] = true
-        }
+	for _, roleNameToCreate := range roleNamesToCreate {
+		log.Printf("Creating ranks (roles) for guild '%v'", guild.ID)
+		existingRoles, err := session.GuildRoles(guild.ID)
+		if err != nil {
+			log.Panicf("Couldn't fetch guild roles for guild '%v'", guild.ID)
+		}
+		existingRoleNames := make(map[string]bool)
+		for _, role := range existingRoles {
+			existingRoleNames[role.Name] = true
+		}
 
-        if _, roleAlreadyExists := existingRoleNames[roleNameToCreate]; roleAlreadyExists {
-            continue
-        }
+		if _, roleAlreadyExists := existingRoleNames[roleNameToCreate]; roleAlreadyExists {
+			continue
+		}
 
-        createdRole, err := CreateRole(session, guild, roleNameToCreate, 100)
-        if err != nil {
-            return createdRoles, fmt.Errorf("During creation of role '%v' on guild '%v' an error has occured %v", createdRole.ID, guild.ID, err)
-        }
+		createdRole, err := CreateRole(session, guild, roleNameToCreate, 100)
+		if err != nil {
+			return createdRoles, fmt.Errorf("During creation of role '%v' on guild '%v' an error has occured %v", createdRole.ID, guild.ID, err)
+		}
 
-        createdRoles = append(createdRoles, createdRole)
-    }
+		createdRoles = append(createdRoles, createdRole)
+	}
 
-    return createdRoles, nil
+	return createdRoles, nil
 }
