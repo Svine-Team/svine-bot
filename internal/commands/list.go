@@ -21,16 +21,4 @@ var List = []*discordgo.ApplicationCommand{
 			},
 		},
 	},
-	{
-		Name:        string(ELoh),
-		Description: "Лох",
-		Options: []*discordgo.ApplicationCommandOption{
-			{
-				Type:        discordgo.ApplicationCommandOptionUser,
-				Name:        "user-option",
-				Description: "User option",
-				Required:    true,
-			},
-		},
-	},
 }
